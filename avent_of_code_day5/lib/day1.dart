@@ -79,85 +79,80 @@ class LinePairs {
   }
 }
 
+const int movingAverageWindow = 3;
+
 void runTask(String inputFile) async {
   var input = File(inputFile);
-  var coordinateList = <LinePairs>[];
-  var pointList = <List<int>>[];
+  var inputData = <int>[];
 
+  //create inputData
   await input.readAsLines().then((List<String> list) {
     for (String line in list) {
       //get only valid coordinate pairs from input
-      var coordinatePairs = createLinePairs(line, returnDiagonals: true);
-
-      if (coordinatePairs != null) {
-        coordinateList.add(coordinatePairs);
+      var currentMeasuerement = int.tryParse(line);
+      if (currentMeasuerement != null) {
+        inputData.add(currentMeasuerement);
       }
     }
   });
 
-  for (var item in coordinateList) {
-    pointList.addAll(item.createActiveMapOfLine());
-  }
-
-//  print('$pointList');
-
-  int totalPointsDuplicated = 0;
-  var copyPointList = List.from(pointList);
-
-  for (var item in pointList) {
-    var removeCount = 0;
-
-    //keeps track of items found that match
-    var duplicateItemList = <List<int>>[];
-
-    for (var copyItem in copyPointList) {
-      if (copyItem[0] == item[0] && copyItem[1] == item[1]) {
-        duplicateItemList.add(copyItem);
-      }
-    }
-
-    //remove all elements that match the item
-    for (var item in duplicateItemList) {
-      copyPointList.remove(item);
-      removeCount++;
-    }
-
-    //removed more than one of the matching element,
-    //which means that it was duplicated at least once
-    if (removeCount > 1) {
-      totalPointsDuplicated++;
-      print('Found $totalPointsDuplicated so far');
-      print('Points Remaining ${copyPointList.length}');
-    }
-  }
-  print('$totalPointsDuplicated');
+  // subract 1 because the first increase isn't real (since it's the first measurement, no "increase" is possible
+  print('Day 1, Part 1 answer: ${findIncreasesInListElements(inputData)}');
+  print(
+      'Day 1, Part 2 answer: ${findIncreasesInListElements(createMovingWindowList(inputData))}');
 }
 
-LinePairs? createLinePairs(String line, {bool returnDiagonals = false}) {
-  var mapPairs = <String, List<int>>{};
-  //create lists for x
-  mapPairs['x'] = List.empty(growable: true);
-  mapPairs['y'] = List.empty(growable: true);
-
-  var orderedPairs = line.split(" -> ");
-  for (var pair in orderedPairs) {
-    var coordinates = pair.split(',');
-    mapPairs['x']!.add(int.parse(coordinates[0]));
-    mapPairs['y']!.add(int.parse(coordinates[1]));
-  }
-  //create line pair object to hold the coordinates for each row
-  LinePairs pair = LinePairs(mapPairs['x']?[0] ?? 0, mapPairs['x']?[1] ?? 0,
-      mapPairs['y']?[0] ?? 0, mapPairs['y']?[1] ?? 0);
-
-  if (returnDiagonals == false) {
-    //check that at least one pair (x or y) have matching coordinate
-    if (((mapPairs['x']?[0] == mapPairs['x']?[1]) ||
-        (mapPairs['y']?[0] == mapPairs['y']?[1]))) {
-      return pair;
-    } else {
-      return null;
+int findIncreasesInListElements(List<int> inputData) {
+  var lastMeasurement = 0;
+  var totalIncreases = 0;
+  for (int currentMeasurement in inputData) {
+    //get only valid coordinate pairs from input
+    if (currentMeasurement > lastMeasurement) {
+      totalIncreases++;
     }
-  } else {
-    return pair;
+    // save last measurement for comparison
+    lastMeasurement = currentMeasurement;
   }
+
+  return (totalIncreases - 1);
+}
+
+List<int> createMovingWindowList(List<int> inputData,
+    {int movingWindow = movingAverageWindow}) {
+  List<int> listOfMovingWindowValues = <int>[];
+
+  List<int> movingBuffer = <int>[];
+
+  for (var currentValue in inputData) {
+    //buffer hasn't been filled up at all yet, so just
+    //add the values to the list
+    if (movingBuffer.length < movingWindow) {
+      movingBuffer.add(currentValue);
+
+      //special case
+      if (movingBuffer.length == movingWindow) {
+        //filled up, add the current window sum to the return list
+        listOfMovingWindowValues.add(sumOfBuffer(movingBuffer));
+      }
+    } else {
+      //remove the first element
+      movingBuffer.removeAt(0);
+
+      movingBuffer.add(currentValue);
+
+      //filled up, add the current window sum to the return list
+      listOfMovingWindowValues.add(sumOfBuffer(movingBuffer));
+    }
+  }
+
+  return listOfMovingWindowValues;
+}
+
+int sumOfBuffer(List<int> buffer) {
+  int sum = 0;
+  for (var item in buffer) {
+    sum += item;
+  }
+
+  return sum;
 }
